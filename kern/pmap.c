@@ -157,6 +157,8 @@ mem_init(void)
 	//////////////////////////////////////////////////////////////////////
 	// Make 'envs' point to an array of size 'NENV' of 'struct Env'.
 	// LAB 3: Your code here.
+        envs = (struct Env*)boot_alloc(NENV * sizeof(struct Env));
+
 
 	//////////////////////////////////////////////////////////////////////
 	// Now that we've allocated the initial kernel data structures, we set
@@ -190,6 +192,7 @@ mem_init(void)
 	//    - the new image at UENVS  -- kernel R, user R
 	//    - envs itself -- kernel RW, user NONE
 	// LAB 3: Your code here.
+    boot_map_region(kern_pgdir, UENVS, NENV * sizeof(struct Env), PADDR(envs), PTE_U | PTE_P);
 
 	//////////////////////////////////////////////////////////////////////
 	// Use the physical memory that 'bootstack' refers to as the kernel
@@ -539,12 +542,34 @@ static uintptr_t user_mem_check_addr;
 // Returns 0 if the user program can access this range of addresses,
 // and -E_FAULT otherwise.
 //
+
+int max(int a, int b) {
+    return (a > b ? a : b);
+}
+
 int
 user_mem_check(struct Env *env, const void *va, size_t len, int perm)
 {
 	// LAB 3: Your code here.
+    
+    user_mem_check_addr = (uintptr_t) va;
+    uintptr_t ptr = ROUNDDOWN((uintptr_t)va, PGSIZE);
+    uintptr_t end = ROUNDUP((uintptr_t)va + len, PGSIZE);
+    for (;ptr < end; ptr += PGSIZE) {
+        if (ptr >= ULIM) {
+            user_mem_check_addr = (user_mem_check_addr, ptr);
+            return -E_FAULT; 
+        }
+        
+        pte_t *ppte = pgdir_walk(env->env_pgdir, (void *)ptr, 0);
+        if (!ppte || (*ppte & (perm|PTE_P)) != (perm | PTE_P)) {
+            user_mem_check_addr = max(user_mem_check_addr, ptr);
+            return -E_FAULT; 
+        }
+    }
 
-	return 0;
+    return 0;
+
 }
 
 //
