@@ -549,6 +549,7 @@ env_run(struct Env *e)
 
 	// LAB 3: Your code here.
     
+    cprintf("LOL%d", e->env_id);
     if (e->env_status == ENV_RUNNING) {
         if (curenv && curenv->env_status == ENV_RUNNING) {
             curenv->env_status = ENV_RUNNABLE;
@@ -561,6 +562,7 @@ env_run(struct Env *e)
 
     unlock_kernel();
     env_pop_tf(&e->env_tf);
+    cprintf("NOT_HERE");
 
 	/* panic("env_run not yet implemented"); */
 }
