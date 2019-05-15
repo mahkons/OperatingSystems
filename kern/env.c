@@ -121,14 +121,14 @@ env_init(void)
 	// LAB 3: Your code here.
     for (int i = 0; i < NENV; i++) {
         if (i != NENV - 1) {
-            envs[i].env_link = &envs[i + 1];
+            envs[i].env_link = envs + (i + 1);
         }
         envs[i].env_id = 0;
         envs[i].env_type = ENV_FREE;
     
     }
     envs[NENV - 1].env_link = NULL;
-    env_free_list = &envs[0];
+    env_free_list = envs;
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -238,6 +238,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 	e->env_type = ENV_TYPE_USER;
 	e->env_status = ENV_RUNNABLE;
 	e->env_runs = 0;
+    /* cprintf("HERE!!!!!!!!!!!!!!%d %d\n", e->env_status, e->env_id); */
 
 	// Clear out all the saved register state,
 	// to prevent the register values
@@ -262,6 +263,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
+    e->env_tf.tf_eflags |= FL_IF; 
 
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
@@ -379,7 +381,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
         }
 
         region_alloc(e, (void*)ph->p_va, ph->p_memsz);
-        memmove((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+        memcpy((void *)ph->p_va, binary + ph->p_offset, ph->p_filesz);
         memset((void *)ph->p_va + ph->p_filesz, 0, ph->p_memsz - ph->p_filesz);
     }
     lcr3(PADDR(kern_pgdir));
@@ -393,7 +395,7 @@ load_icode(struct Env *e, uint8_t *binary, size_t size)
     // at virtual address USTACKTOP - PGSIZE.
 
     // LAB 3: Your code here.
-    region_alloc(e, (void*) USTACKTOP - PGSIZE, PGSIZE);
+    region_alloc(e, (void*) (USTACKTOP - PGSIZE), PGSIZE);
 
 }
 
@@ -555,9 +557,10 @@ env_run(struct Env *e)
     curenv = e;
     curenv->env_status = ENV_RUNNING;
     curenv->env_runs++;
-    lcr3(PADDR(curenv->env_pgdir));
+    lcr3(PADDR(e->env_pgdir));
 
-    env_pop_tf(&curenv->env_tf);
+    unlock_kernel();
+    env_pop_tf(&e->env_tf);
 
 	/* panic("env_run not yet implemented"); */
 }

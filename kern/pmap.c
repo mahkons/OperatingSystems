@@ -168,7 +168,7 @@ mem_init(void)
 	// memory management will go through the page_* functions. In
 	// particular, we can now map memory using boot_map_region
 	// or page_insert
-	page_init();
+    page_init();
 
 	check_page_free_list(1);
 	check_page_alloc();
@@ -269,6 +269,10 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+    
+    for (int i = 0; i < NCPU; i++) {
+        boot_map_region(kern_pgdir, KSTACKTOP - i * (KSTKSIZE + KSTKGAP) - KSTKSIZE, KSTKSIZE, PADDR(percpu_kstacks[i]), PTE_W);
+    }
 
 }
 
@@ -317,6 +321,12 @@ page_init(void)
         }
         //2 and 3 and 4
         if (i >= npages_basemem && i < PGNUM(PADDR(boot_alloc(0)))) {
+            continue;
+        }
+        //LAB 4
+        if (i == PGNUM(MPENTRY_PADDR)) {
+            pages[i].pp_ref = 1;
+            pages[i].pp_link = NULL;
             continue;
         }
 
@@ -588,7 +598,15 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
-	panic("mmio_map_region not implemented");
+    size = ROUNDUP(size, PGSIZE);
+    if (base + size >= MMIOLIM) {
+        panic("reservation would overflow MMIOLIM");
+    }
+    boot_map_region(kern_pgdir, base, size, pa, PTE_PCD | PTE_PWT | PTE_W);
+
+    uintptr_t region = base;
+    base += size;
+    return (void*)region;
 }
 
 static uintptr_t user_mem_check_addr;
