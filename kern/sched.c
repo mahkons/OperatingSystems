@@ -39,7 +39,9 @@ sched_yield(void)
         if (pos == NENV) {
             pos = 0;
         }
-        cprintf("What I am doing here!?%d %d\n", pos, envs[pos].env_status);
+        if (pos < 2) {
+            /* cprintf("What I am doing here!?%d %d\n", pos, envs[pos].env_status); */
+        }
         if (envs[pos].env_status == ENV_RUNNABLE) {
             env_run(envs + pos);
         }
