@@ -349,7 +349,7 @@ struct PageInfo *
 page_alloc(int alloc_flags)
 {
     struct PageInfo* result = page_free_list;
-    if (result == NULL) {
+    if (!result) {
         return result;
     }
     page_free_list = page_free_list->pp_link;
@@ -488,21 +488,17 @@ page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
     physaddr_t page_pa = page2pa(pp);
 
     if (*pte & PTE_P) {
-        if (PTE_ADDR(*pte) != page_pa) {
-            page_remove(pgdir, va);
-            tlb_invalidate(pgdir, va);
-        }
-        else {
-            *pte = page_pa | perm | PTE_P;
-            return 0;
-        }
+        pp->pp_ref++;
+        tlb_invalidate(pgdir, va);
+        page_remove(pgdir, va);
     }
-    pp->pp_ref++;
+    else {
+        pp->pp_ref++;
+    }
     *pte = page_pa | perm | PTE_P;
 
-	return 0;
+    return 0;
 }
-
 //
 // Return the page mapped at virtual address 'va'.
 // If pte_store is not zero, then we store in it the address
