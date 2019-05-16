@@ -90,6 +90,22 @@ extern void handler_18();
 extern void handler_19();
 extern void handler_48();
 
+extern void handler_32();
+extern void handler_33();
+extern void handler_34();
+extern void handler_35();
+extern void handler_36();
+extern void handler_37();
+extern void handler_38();
+extern void handler_39();
+extern void handler_40();
+extern void handler_41();
+extern void handler_42();
+extern void handler_43();
+extern void handler_44();
+extern void handler_45();
+extern void handler_46();
+extern void handler_47();
 
 void
 trap_init(void)
@@ -117,6 +133,10 @@ trap_init(void)
     S(T_MCHK, 0);  
     S(T_SIMDERR, 0);
     S(T_SYSCALL, 3);
+    
+    for (int i = 0; i < 16; i++) {
+        S(IRQ_OFFSET + i, 0);
+    }
     
 
 	// Per-CPU setup 
@@ -152,7 +172,7 @@ trap_init_percpu(void)
 
 	// Setup a TSS so that we get the right stack
 	// when we trap to the kernel.
-	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP;
+	thiscpu->cpu_ts.ts_esp0 = KSTACKTOP - thiscpu->cpu_id * (KSTKSIZE + KSTKGAP);;
 	thiscpu->cpu_ts.ts_ss0 = GD_KD;
 
 	// Initialize the TSS slot of the gdt.
@@ -235,8 +255,9 @@ trap_dispatch(struct Trapframe *tf)
             break;
 
 
-
        default:
+
+
 
 
 	// Handle spurious interrupts
@@ -251,6 +272,13 @@ trap_dispatch(struct Trapframe *tf)
 	// Handle clock interrupts. Don't forget to acknowledge the
 	// interrupt using lapic_eoi() before calling the scheduler!
 	// LAB 4: Your code here.
+
+    if(tf->tf_trapno == IRQ_OFFSET + IRQ_TIMER) {
+        lapic_eoi();
+        sched_yield();
+        return;
+    }
+
 
 	// Unexpected trap: The user process or the kernel has a bug.
 	print_trapframe(tf);
@@ -289,8 +317,8 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
-        lock_kernel();
 		assert(curenv);
+        lock_kernel();
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {

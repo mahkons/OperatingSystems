@@ -35,10 +35,7 @@ sched_yield(void)
         pos = ENVX(curenv->env_id);  
     }
     for (int i = 0; i < NENV; i++) {
-        pos++;
-        if (pos == NENV) {
-            pos = 0;
-        }
+        pos = (pos + 1) % NENV;
         if (pos < 2) {
             /* cprintf("What I am doing here!?%d %d\n", pos, envs[pos].env_status); */
         }
